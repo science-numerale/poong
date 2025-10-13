@@ -63,12 +63,10 @@ fn game(state: &State, internal: &mut PongState) -> Option<Result<&'static dyn G
         internal.direction = Direction::Up;
     }
 
-    if internal.direction == Direction::Up {
-        internal.position.1 -= (state.delta_t.as_millis() as f64) / 50.;
-    }
-
-    if internal.direction == Direction::Down {
-        internal.position.1 += (state.delta_t.as_millis() as f64) / 50.;
+    match internal.direction {
+        Direction::Up => internal.position.1 -= (state.delta_t.as_millis() as f64) / 50.,
+        Direction::Down => internal.position.1 += (state.delta_t.as_millis() as f64) / 50.,
+        _ => (),
     }
 
     internal.player.move_to(
