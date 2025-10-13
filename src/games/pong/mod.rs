@@ -11,27 +11,13 @@ pub struct Pong;
 
 impl Game for Pong {
     fn start(&self) -> Result<&dyn Game, GameErr> {
-        let ball = Rect::new(
-            0,
-            0,
-            2,
-            1,
-            Color::Rgb {
-                r: 255,
-                g: 255,
-                b: 255,
-            },
-        );
-
         let (w, h) = terminal::size().unwrap();
         let (w, h) = (w as usize, h as usize);
 
         let state = PongState {
             player1: Player::new(5, (h / 2) - 5),
             player2: Player::new(w - 5, (h / 2) - 5),
-            ball,
-            ball_position: ((((w as f64) / 2.) - 1.), (h as f64) / 2.),
-            ball_movement: (-1., 0.5),
+            ball: Ball::new((w / 2) - 1, h / 2),
         };
 
         game_loop(state, game)
@@ -41,9 +27,57 @@ impl Game for Pong {
 struct PongState {
     player1: Player,
     player2: Player,
-    ball: Rect,
-    ball_position: (f64, f64),
-    ball_movement: (f64, f64),
+    ball: Ball,
+}
+
+struct Ball {
+    rect: Rect,
+    position: (f64, f64),
+    movement: (f64, f64),
+}
+
+impl Ball {
+    pub fn new(x: usize, y: usize) -> Self {
+        Self {
+            rect: Rect::new(
+                x,
+                y,
+                2,
+                1,
+                Color::Rgb {
+                    r: 255,
+                    g: 255,
+                    b: 255,
+                },
+            ),
+            position: (x as f64, y as f64),
+            movement: (-1., 0.5),
+        }
+    }
+
+    pub const fn position(&self) -> (f64, f64) {
+        self.position
+    }
+
+    pub const fn movement(&self) -> (f64, f64) {
+        self.movement
+    }
+
+    pub const fn inverse_x_movement(&mut self) {
+        self.movement.0 = -self.movement.0
+    }
+
+    pub fn update(&mut self, terminal_height: usize, elapsed_millis: u128) {
+        self.position.0 += (self.movement.0 * elapsed_millis as f64) / 50.;
+        self.position.1 += (self.movement.1 * elapsed_millis as f64) / 50.;
+
+        if self.position.1 < 0. || self.position.1 + 1. > terminal_height as f64 {
+            self.movement.1 = -self.movement.1;
+        }
+
+        self.rect
+            .move_to(self.position.0 as usize, self.position.1 as usize);
+    }
 }
 
 struct Player {
@@ -141,36 +175,25 @@ fn game(state: &State, internal: &mut PongState) -> Option<Result<&'static dyn G
     internal
         .player2
         .update(state.terminal_height, state.delta_t.as_millis());
+    internal
+        .ball
+        .update(state.terminal_height, state.delta_t.as_millis());
 
-    internal.ball_position.0 += (internal.ball_movement.0 * state.delta_t.as_millis() as f64) / 50.;
-    internal.ball_position.1 += (internal.ball_movement.1 * state.delta_t.as_millis() as f64) / 50.;
-
-    if internal.ball_position.0 < 0. {
+    if internal.ball.position().0 < 0. {
         return Some(Ok(&GameOver));
-    } else if internal.ball_position.0 + 2. > state.terminal_width as f64 {
-        // TODO: win
+    } else if internal.ball.position().0 + 2. > state.terminal_width as f64 {
         return Some(Err(GameErr::NotYetImplemented));
-    }
-
-    if internal.ball_position.1 < 0. || internal.ball_position.1 + 1. > state.terminal_height as f64
-    {
-        internal.ball_movement.1 = -internal.ball_movement.1;
     }
 
     if internal
         .player1
-        .touches_ball(internal.ball_movement, internal.ball_position, true)
+        .touches_ball(internal.ball.movement(), internal.ball.position(), true)
         || internal
             .player2
-            .touches_ball(internal.ball_movement, internal.ball_position, false)
+            .touches_ball(internal.ball.movement(), internal.ball.position(), false)
     {
-        internal.ball_movement.0 = -internal.ball_movement.0
+        internal.ball.inverse_x_movement();
     }
-
-    internal.ball.move_to(
-        internal.ball_position.0.trunc() as usize,
-        internal.ball_position.1.trunc() as usize,
-    );
 
     None
 }
