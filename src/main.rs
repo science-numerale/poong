@@ -1,5 +1,7 @@
 use crossterm::{
-    cursor, style::Color, terminal::{self, enable_raw_mode}, ExecutableCommand
+    ExecutableCommand, cursor,
+    style::Color,
+    terminal::{self, disable_raw_mode, enable_raw_mode},
 };
 use lazy_static::lazy_static;
 use std::{
@@ -7,7 +9,7 @@ use std::{
     sync::Mutex,
 };
 
-use crate::games::{Game, pong};
+use crate::games::{Game, pong::Pong};
 
 lazy_static! {
     pub static ref STD_OUT: Mutex<Stdout> = Mutex::new(stdout());
@@ -28,5 +30,11 @@ fn main() {
 
     drop(stdout);
 
-    pong::Pong.start().unwrap();
+    let mut game: &dyn Game = &Pong;
+
+    while let Ok(next) = game.start() {
+        game = next
+    }
+
+    disable_raw_mode().unwrap();
 }
