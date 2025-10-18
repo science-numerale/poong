@@ -1,40 +1,90 @@
+#![warn(clippy::all, clippy::pedantic, clippy::nursery)]
 use crossterm::{
-    ExecutableCommand, cursor,
-    style::Color,
-    terminal::{self, disable_raw_mode, enable_raw_mode},
+    ExecutableCommand, QueueableCommand,
+    cursor::{self, MoveTo},
+    terminal,
 };
-use lazy_static::lazy_static;
 use std::{
-    io::{Stdout, stdout},
-    sync::Mutex,
+    fmt::Display,
+    io::{self, Write, stdin, stdout},
+    thread,
+    time::Duration,
 };
 
-use crate::games::{Game, pong::Pong};
-
-lazy_static! {
-    pub static ref STD_OUT: Mutex<Stdout> = Mutex::new(stdout());
-}
-pub static BACKGROUND_COLOR: Mutex<Color> = Mutex::new(Color::Black);
-pub static FOREGROUND_COLOR: Mutex<Color> = Mutex::new(Color::White);
-
-mod games;
 mod utils;
 
-fn main() {
-    enable_raw_mode().unwrap();
-    let mut stdout = STD_OUT.lock().unwrap();
+use crate::games::{Game, pong::Pong, snake::Snake};
+
+mod games;
+
+fn main() -> io::Result<()> {
+    let mut stdout = stdout();
+
     stdout
-        .execute(terminal::Clear(terminal::ClearType::All))
-        .unwrap();
-    stdout.execute(cursor::Hide).unwrap();
+        .queue(terminal::EnterAlternateScreen)?
+        .queue(terminal::Clear(terminal::ClearType::All))?
+        .flush()?;
 
-    drop(stdout);
+    loop {
+        macro_rules! play_game {
+            ($game:ty) => {{
+                stdout
+                    .queue(terminal::EnterAlternateScreen)?
+                    .queue(cursor::Hide)?
+                    .queue(terminal::Clear(terminal::ClearType::All))?
+                    .flush()?;
 
-    let mut game: &dyn Game = &Pong;
+                terminal::enable_raw_mode().unwrap();
 
-    while let Ok(next) = game.start() {
-        game = next
+                let res = <$game>::start(&stdout);
+
+                stdout
+                    .queue(terminal::LeaveAlternateScreen)?
+                    .queue(cursor::Show)?
+                    .queue(terminal::Clear(terminal::ClearType::All))?
+                    .flush()?;
+
+                terminal::disable_raw_mode().unwrap();
+
+                Some(Box::new(res))
+            }};
+        }
+        stdout
+            .queue(terminal::Clear(terminal::ClearType::All))?
+            .queue(cursor::MoveTo(0, 0))?;
+
+        println!("À quel jeu voulez-vous jouer ? (pong/snake/quitter)");
+        print!(">> ");
+        stdout.flush()?;
+        let mut answer = String::new();
+        stdin().read_line(&mut answer).unwrap();
+        let answer = answer.trim();
+
+        let result: Option<Box<dyn Display>> = match answer {
+            "pong" => play_game!(Pong),
+            "snake" => play_game!(Snake),
+
+            "quitter" => {
+                println!("À bientôt !");
+                break;
+            }
+
+            game => {
+                println!("Le jeu {game} n'existe pas.");
+                None
+            }
+        };
+
+        stdout.queue(MoveTo(0, 0))?;
+
+        if let Some(result) = result {
+            println!("Résultat de la partie :");
+            println!("{result}");
+            println!("*appuyez sur Enter*");
+            stdin().read_line(&mut String::new())?;
+        }
     }
 
-    disable_raw_mode().unwrap();
+    stdout.execute(terminal::LeaveAlternateScreen)?;
+    Ok(())
 }

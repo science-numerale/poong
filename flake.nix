@@ -10,33 +10,22 @@
     flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs =
-    {
-      self,
-      nixpkgs,
-      rust-overlay,
-      flake-utils,
-      ...
-    }:
-    flake-utils.lib.eachDefaultSystem (
-      system:
+  outputs = { nixpkgs, rust-overlay, flake-utils, ... }:
+    flake-utils.lib.eachDefaultSystem (system:
       let
         overlays = [ (import rust-overlay) ];
         pkgs = import nixpkgs { inherit system overlays; };
-      in
-      {
-        devShells.default =
-          with pkgs;
+      in {
+        devShells.default = with pkgs;
           mkShell {
             buildInputs = [
-              (rust-bin.selectLatestNightlyWith (
-                toolchain:
-                toolchain.default.override {}
-              ))
+              (rust-bin.selectLatestNightlyWith (toolchain:
+                toolchain.default.override {
+                  extensions = [ "rust-src" "rust-analyzer" ];
+                }))
             ];
 
             shellHook = "exec nu";
           };
-      }
-    );
+      });
 }
