@@ -22,6 +22,7 @@
               (rust-bin.selectLatestNightlyWith (toolchain:
                 toolchain.default.override {
                   extensions = [ "rust-src" "rust-analyzer" ];
+                  targets = [ "x86_64-pc-windows-gnu" ];
                 }))
             ];
 

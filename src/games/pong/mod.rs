@@ -274,7 +274,7 @@ impl TickedGame<PongResult, TickedGameUpdate> for Pong<'_> {
                         ['a'; 2],
                         #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
                         Vector2(
-                            (f64::from(window_size.0) * player_margin).floor().abs() as u16 - 1,
+                            (f64::from(window_size.0) * player_margin).round().abs() as u16 - 1,
                             y,
                         ),
                         Some((Color::White, Color::White)),
@@ -295,7 +295,7 @@ impl TickedGame<PongResult, TickedGameUpdate> for Pong<'_> {
                         #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
                         Vector2(
                             (f64::from(window_size.0) * (1. - player_margin))
-                                .ceil()
+                                .round()
                                 .abs() as u16,
                             y,
                         ),

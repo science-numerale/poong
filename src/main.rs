@@ -49,10 +49,6 @@ fn main() -> io::Result<()> {
                 Some(Box::new(res))
             }};
         }
-        stdout
-            .queue(terminal::Clear(terminal::ClearType::All))?
-            .queue(cursor::MoveTo(0, 0))?;
-
         println!("À quel jeu voulez-vous jouer ? (pong/snake/quitter)");
         print!(">> ");
         stdout.flush()?;
@@ -75,13 +71,15 @@ fn main() -> io::Result<()> {
             }
         };
 
-        stdout.queue(MoveTo(0, 0))?;
-
         if let Some(result) = result {
+            stdout.queue(MoveTo(0, 0))?;
             println!("Résultat de la partie :");
             println!("{result}");
             println!("*appuyez sur Enter*");
             stdin().read_line(&mut String::new())?;
+            stdout
+                .queue(terminal::Clear(terminal::ClearType::All))?
+                .queue(cursor::MoveTo(0, 0))?;
         }
     }
 
